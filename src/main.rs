@@ -148,8 +148,24 @@ fn elf2uf2(mut input: impl Read + Seek, mut output: impl Write) -> Result<(), Bo
         }
 
         block_data.iter_mut().for_each(|v| *v = 0);
-
+        
         realize_page(&mut input, &fragments, &mut block_data)?;
+        
+        // Add the checksum to the end of the boot section
+        if !ram_style && target_addr == 0x1000_0000 {
+            const BOOT2_OUTPUT_LEN: usize = 256;
+            const MAX_BOOT2_INPUT_LEN: usize = BOOT2_OUTPUT_LEN - 4;
+            
+            if fragments[0].bytes as usize >= MAX_BOOT2_INPUT_LEN {
+                panic!("boot2 blob is too long!")
+            }
+            
+            // Replace the last elements of the 0x100 long .boot2 section with the checksum  
+            let crc_bytes = calc_crc(&block_data.split_at(MAX_BOOT2_INPUT_LEN).0).to_le_bytes();
+            crc_bytes.iter().enumerate().for_each(|(i, &w)| {
+                block_data[0x100 - crc_bytes.len() + i] = w;
+            });
+        }
 
         output.write_all(block_header.as_bytes())?;
         output.write_all(block_data.as_bytes())?;
@@ -171,6 +187,12 @@ fn elf2uf2(mut input: impl Read + Seek, mut output: impl Write) -> Result<(), Bo
     }
 
     Ok(())
+}
+
+fn calc_crc(data: &[u8]) -> u32 {
+    let mut engine = crc_any::CRCu32::crc32mpeg2();
+    engine.digest(data);
+    engine.get_crc()
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
