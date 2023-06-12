@@ -45,6 +45,10 @@ struct Opts {
 
     /// Output file
     output: Option<String>,
+
+    /// Enable crc for the boot2 section
+    #[clap(short, long)]
+    crc: bool
 }
 
 impl Opts {
@@ -152,7 +156,7 @@ fn elf2uf2(mut input: impl Read + Seek, mut output: impl Write) -> Result<(), Bo
         realize_page(&mut input, &fragments, &mut block_data)?;
         
         // Add the checksum to the end of the boot section
-        if !ram_style && target_addr == 0x1000_0000 {
+        if !ram_style && target_addr == 0x1000_0000 && Opts::global().crc {
             const BOOT2_OUTPUT_LEN: usize = 256;
             const MAX_BOOT2_INPUT_LEN: usize = BOOT2_OUTPUT_LEN - 4;
             
