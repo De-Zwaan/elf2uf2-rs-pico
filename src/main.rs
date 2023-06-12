@@ -165,6 +165,15 @@ fn elf2uf2(mut input: impl Read + Seek, mut output: impl Write) -> Result<(), Bo
             crc_bytes.iter().enumerate().for_each(|(i, &w)| {
                 block_data[0x100 - crc_bytes.len() + i] = w;
             });
+
+            if Opts::global().verbose {
+                println!(
+                    "Added {:?} to {}->{} of .boot2 section",
+                    crc_bytes,
+                    0x100 - crc_bytes.len(),
+                    0x100 - crc_bytes.len() + 3
+                );
+            }
         }
 
         output.write_all(block_header.as_bytes())?;
